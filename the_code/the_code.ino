@@ -2,6 +2,11 @@
 #include <Wire.h>
 #include <IRremote.hpp>
 #include <VL53L0X.h>
+#include <functional>  // Include this for std::function
+
+//============================================================//
+//                       PIN Definition                       //
+//============================================================//
 
 #define SCL_PIN 32
 #define SDA_PIN 33
@@ -24,43 +29,52 @@
 #define LED_G 14
 #define LED_B 23
 
-enum State { IDLE, READY, COMBAT, STOP };
 enum Strategy { UNDEFINED, AGGRESSIVE, DEFENSIVE };
 
-struct Velocity { int left; int right; };
-
-
+// Updated to use std::function
+void strategyDefinition(std::function<void(int, int, int)> move, Strategy strategy) {
+    switch (strategy) {
+        case UNDEFINED:
+            move(255, 255, 20);
+            move(255, 100, 10);
+            break;
+        case AGGRESSIVE:
+            move(255, 255, 10);
+            move(255, 0, 40);
+            break;
+        case DEFENSIVE:
+            move(0, 0, 80);
+            move(10, 10, 80);
+            break;
+    }
+}
 
 //============================================================//
 //                      Robot Controller                      //
 //============================================================//
 
-class RobotController {
+enum State { IDLE, READY, COMBAT, STOP };
+struct Velocity { int left; int right; };
 
-private:
+class RobotController {
+public:
     Velocity strategySpeed;
     State currentState;
     Strategy currentStrategy;
 
-public:
     RobotController() : strategySpeed{0, 0}, currentState(IDLE), currentStrategy(UNDEFINED) {}
-
-    void setState(State newState) { currentState = newState; }
-    State getState() const { return currentState; }
-
-    void setStrategy(Strategy strategy) { currentStrategy = strategy; }
-    Strategy getStrategy() const { return currentStrategy; }
 
     void setSpeed(int leftSpeed, int rightSpeed) {
         strategySpeed.left = leftSpeed;
         strategySpeed.right = rightSpeed;
     }
-    Velocity getSpeed() const { return strategySpeed; }
 };
 
+//============================================================//
+//                       Motor Handler                        //
+//============================================================//
 
 class MotorHandler {
-
 public:
     void init() {
         pinMode(MOTOR_L_IN1, OUTPUT);
@@ -95,14 +109,11 @@ public:
     }
 };
 
-
-
 //============================================================//
 //                        Lox Handler                         //
 //============================================================//
 
 class LoxHandler {
-
 private:
     VL53L0X loxSensors[3];
 
@@ -145,14 +156,11 @@ public:
     }
 };
 
-
-
 //============================================================//
 //                          Core 00                           //
 //============================================================//
 
 class Core00 {
-
 private:
     RobotController* controller;
 
@@ -162,48 +170,35 @@ private:
 
         while (millis() < targetTime) {
             if (IrReceiver.decode() && IrReceiver.decodedIRData.command == 0x02) {
-                controller->setState(STOP);
+                controller->currentState = STOP;
                 controller->setSpeed(0, 0);
                 break;
             }
         }
     }
 
-    void strategyHandler() {
-        Strategy strategy = controller->getStrategy();
-        switch (strategy) {
-            case UNDEFINED:
-                move(255, 255, 20);
-                move(255, 100, 10);
-                break;
-            case AGGRESSIVE:
-                move(255, 255, 10);
-                move(255, 0, 40);
-                break;
-            case DEFENSIVE:
-                move(0, 0, 80);
-                move(10, 10, 80);
-                break;
-        }
+    // Update strategyHandler to pass std::function
+    void strategyHandler(Strategy strategy) {
+        strategyDefinition(std::bind(&Core00::move, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), strategy);
     }
 
     void loop() {
         if (IrReceiver.decode()) {
             switch (IrReceiver.decodedIRData.command) {
                 case 0x00: Serial.println("Live signal"); break;
-                case 0x01: controller->setState(COMBAT); break;
-                case 0x02: controller->setState(STOP); break;
-                case 0x04: controller->setStrategy(AGGRESSIVE); controller->setState(READY); break;
-                case 0x05: controller->setStrategy(DEFENSIVE); controller->setState(READY); break;
+                case 0x01: controller->currentState = COMBAT; break;
+                case 0x02: controller->currentState = STOP; break;
+                case 0x04: controller->currentStrategy = AGGRESSIVE; controller->currentState = READY; break;
+                case 0x05: controller->currentStrategy = DEFENSIVE; controller->currentState = READY; break;
                 default: Serial.println("Unknown IR command received"); break;
             }
             IrReceiver.resume();
         }
 
-        switch (controller->getState()) {
+        switch (controller->currentState) {
             case IDLE: break;
             case READY: digitalWrite(LED_R, HIGH); break;
-            case COMBAT: strategyHandler(); break;
+            case COMBAT: strategyHandler(controller->currentStrategy); break;
             case STOP: while (true) {} break;
         }
     }
@@ -220,26 +215,23 @@ public:
     }
 };
 
-
-
 //============================================================//
 //                          Core 01                           //
 //============================================================//
 
 class Core01 {
-
 private:
     MotorHandler motors;
     LoxHandler lox;
     RobotController* controller;
 
     void applySpeed() {
-        Velocity speed = controller->getSpeed();
+        Velocity speed = controller->strategySpeed;
         motors.write(speed.left, speed.right);
     }
 
     void loop() {
-        switch (controller->getState()) {
+        switch (controller->currentState) {
             case COMBAT:
                 applySpeed();
                 break;
@@ -249,7 +241,7 @@ private:
                 break;
             case STOP:
                 motors.stop();
-                while (true) {} // Stop everything in a loop
+                while (true) {}
                 break;
         }
     }
@@ -262,25 +254,19 @@ public:
         lox.init();
         Serial.println("Core01 (Motor and Lox) initialized");
 
-        // Main task loop
         while (true) {
             loop();
         }
     }
 };
 
-
-
-
 //============================================================//
 //                          __main__                          //
 //============================================================//
 
-
 RobotController robotController;
 Core00 core00(&robotController);
 Core01 core01(&robotController);
-
 
 void strategyTask(void* parameter) { core00.task(); }
 void motorAndLoxTask(void* parameter) { core01.task(); }
