@@ -2,7 +2,7 @@
 #include <Wire.h>
 #include <IRremote.hpp>
 #include <VL53L0X.h>
-#include <functional>  // Include this for std::function
+#include <functional>
 
 //============================================================//
 //                PIN Definition And Strategies               //
@@ -31,13 +31,10 @@
 
 enum Strategy { UNDEFINED, AGGRESSIVE, DEFENSIVE };
 
-// Updated to use std::function
+// move( Left Velocity, Right Velocity, Duration );
 void strategyDefinition(std::function<void(int, int, int)> move, Strategy strategy) {
     switch (strategy) {
-        case UNDEFINED:
-            move(255, 255, 20);
-            move(255, 100, 10);
-            break;
+		// TODO: Criar estratégias
         case AGGRESSIVE:
             move(255, 255, 10);
             move(255, 0, 40);
@@ -45,6 +42,10 @@ void strategyDefinition(std::function<void(int, int, int)> move, Strategy strate
         case DEFENSIVE:
             move(0, 0, 80);
             move(10, 10, 80);
+            break;
+        case UNDEFINED:
+		default:
+            move(-100, 100, INFINITY);
             break;
     }
 }
@@ -177,7 +178,6 @@ private:
         }
     }
 
-    // Update strategyHandler to pass std::function
     void strategyHandler(Strategy strategy) {
         strategyDefinition(std::bind(&Core00::move, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), strategy);
     }
