@@ -5,7 +5,7 @@
 #include <functional>  // Include this for std::function
 
 //============================================================//
-//                       PIN Definition                       //
+//                PIN Definition And Strategies               //
 //============================================================//
 
 #define SCL_PIN 32
