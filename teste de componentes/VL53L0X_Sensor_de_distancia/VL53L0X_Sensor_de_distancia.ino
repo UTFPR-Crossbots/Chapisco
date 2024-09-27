@@ -5,8 +5,8 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
-#define SDA_PIN 33
-#define SCL_PIN 32
+#define SDA_PIN 32
+#define SCL_PIN 33
 
 const int VL53L0X_count = 3;
 const int VL53L0X_pin[VL53L0X_count] = { 25, 26, 27 };
@@ -15,7 +15,9 @@ const int VL53L0X_address[VL53L0X_count] = { 0x30, 0x31, 0x32 };
 VL53L0X sensors[VL53L0X_count];
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
+  delay(500); // Await connection
+
   Wire.begin(SDA_PIN, SCL_PIN);
 
   Serial.println("Initializing VL53L0X sensors...");

@@ -7,7 +7,7 @@
 const int IR_RECEIVE_PIN = 13;
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   delay(5000);  // Await serial connection
 
   Serial.println("-- \t chapisco \t --");
@@ -51,7 +51,7 @@ void loop() {
     } else if (0x02) {
       Serial.println("Parar!");
     } else {
-      Serial.println("Comando não definido")
+      Serial.println("Comando não definido");
     }
 
   }

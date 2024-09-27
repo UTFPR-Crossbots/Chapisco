@@ -38,6 +38,8 @@ void strategyDefinition(std::function<void(int, int, int)> move, Strategy strate
         case AGGRESSIVE:
             move(255, 255, 10);
             move(255, 0, 40);
+            move(255, 255, 10);
+            move(255, 255, 10);
             break;
         case DEFENSIVE:
             move(0, 0, 80);
