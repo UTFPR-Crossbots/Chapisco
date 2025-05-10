@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "vl53l0x.h": "c",
+        "array": "c",
+        "deque": "c",
+        "string": "c",
+        "unordered_map": "c",
+        "unordered_set": "c",
+        "vector": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "infrared.h": "c",
+        "irremote.h": "c"
+    }
+}
